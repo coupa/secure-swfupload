@@ -459,6 +459,8 @@ package {
 				ExternalInterface.addCallback("SetButtonCursor", this.SetButtonCursor);
 
 				ExternalInterface.addCallback("TestExternalInterface", this.TestExternalInterface);
+
+				ExternalInterface.addCallback("Destroy", this.Destroy);
 				
 			} catch (ex:Error) {
 				this.Debug("Callbacks where not set: " + ex.message);
@@ -716,6 +718,7 @@ package {
 			if (this.fileTypes.length > 0) allowed_file_types = this.fileTypes;
 			if (this.fileTypesDescription.length > 0)  allowed_file_types_description = this.fileTypesDescription;
 
+			this.Debug("KUSNO BUILD V.2");
 			this.Debug("Event: fileDialogStart : Browsing files. Single Select. Allowed file types: " + allowed_file_types);
 			ExternalCall.Simple(this.fileDialogStart_Callback);
 
@@ -1070,6 +1073,14 @@ package {
 		private function SetDebugEnabled(debug_enabled:Boolean):void {
 			this.debugEnabled = debug_enabled;
 		}
+
+		private function Destroy():void {
+			if (this.restoreExtIntTimer!== null) {
+				this.restoreExtIntTimer.stop();
+				this.restoreExtIntTimer = null;
+			}
+		}
+
 		
 		/* *************************************************************
 			Button Handling Functions

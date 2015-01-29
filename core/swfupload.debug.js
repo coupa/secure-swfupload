@@ -311,9 +311,11 @@ SWFUpload.prototype.buildParamString = function () {
 // Credits: Major improvements provided by steffen
 SWFUpload.prototype.destroy = function () {
 	try {
+        console.log('!! destroy Start');
 		// Make sure Flash is done before we try to remove it
 		this.cancelUpload(null, false);
-        this.swfDestroy();
+
+        // this.swfDestroy();
 
 		// Remove the SWFUpload DOM nodes
 		var movieElement = null;
@@ -321,37 +323,49 @@ SWFUpload.prototype.destroy = function () {
 		
 		if (movieElement && typeof(movieElement.CallFunction) === "unknown") { // We only want to do this in IE
 			// Loop through all the movie's properties and remove all function references (DOM/JS IE 6/7 memory leak workaround)
+            console.log('!! destroy nullify movieElement');
 			for (var i in movieElement) {
 				try {
 					if (typeof(movieElement[i]) === "function") {
 						movieElement[i] = null;
 					}
-				} catch (ex1) {}
+				} catch (ex1) {
+                    console.log('!! destroy nullify movieElement exception 1');
+                }
 			}
 
 			// Remove the Movie Element from the page
 			try {
-				movieElement.parentNode.removeChild(movieElement);
-			} catch (ex) {}
+                console.log('!! destroy nullify movieElement');
+                for (var i in movieElement) {
+                    movieElement.parentNode.removeChild(movieElement);
+                }
+			} catch (ex) {
+                console.log('!! destroy nullify movieElement exception 2');
+            }
 		}
-		
+
 		// Remove IE form fix reference
 		window[this.movieName] = null;
 
 		// Destroy other references
-		SWFUpload.instances[this.movieName] = null;
-		delete SWFUpload.instances[this.movieName];
+        // maybe should be put in queue also
+        console.log('!! destroy deleting SWFUpload.movieName '+this.movieName);
+        //this.nullify(this.movieName)
+        delete SWFUpload.instances[this.movieName];
+        SWFUpload.instances[this.movieName] = null;
 
 		this.movieElement = null;
 		this.settings = null;
 		this.customSettings = null;
 		this.eventQueue = null;
 		this.movieName = null;
-		
-		
+
+
 		return true;
 	} catch (ex2) {
 		return false;
+        console.log('!! destroy exception 2 ');
 	}
 };
 
@@ -446,7 +460,10 @@ SWFUpload.prototype.callFlash = function (functionName, argumentArray) {
 
 	// Flash's method if calling ExternalInterface methods (code adapted from MooTools).
 	try {
-		returnString = movieElement.CallFunction('<invoke name="' + functionName + '" returntype="javascript">' + __flash__argumentsToXML(argumentArray, 0) + '</invoke>');
+        func_str = '<invoke name="' + functionName + '" returntype="javascript">' + __flash__argumentsToXML(argumentArray, 0) + '</invoke>';
+        console.log('## callFlash: '+func_str)
+		returnString = movieElement.CallFunction(func_str);
+        console.log('## callFlash: return = '+returnString)
 		returnValue = eval(returnString);
 	} catch (ex) {
 		throw "Call to " + functionName + " failed";
@@ -711,7 +728,8 @@ SWFUpload.prototype.setButtonCursor = function (cursor) {
 
 SWFUpload.prototype.queueEvent = function (handlerName, argumentArray) {
 	// Warning: Don't call this.debug inside here or you'll create an infinite loop
-	
+    console.log('%% queueEvent Start '+handlerName);
+
 	if (argumentArray == undefined) {
 		argumentArray = [];
 	} else if (!(argumentArray instanceof Array)) {
@@ -722,17 +740,22 @@ SWFUpload.prototype.queueEvent = function (handlerName, argumentArray) {
 	if (typeof this.settings[handlerName] === "function") {
 		// Queue the event
 		this.eventQueue.push(function () {
+            console.log('%% queueEvent.apply Start '+handlerName)
 			this.settings[handlerName].apply(this, argumentArray);
+            console.log('%% queueEvent.apply Completed')
 		});
 		
 		// Execute the next queued event
 		setTimeout(function () {
+            console.log('%% queueEvent.executeNextEvent Start')
 			self.executeNextEvent();
+            console.log('%% queueEvent.executeNextEvent Completed')
 		}, 0);
 		
 	} else if (this.settings[handlerName] !== null) {
 		throw "Event handler " + handlerName + " is unknown or is not a function";
 	}
+    console.log('%% queueEvent Completed '+handlerName)
 };
 
 // Private: Causes the next event in the queue to be executed.  Since events are queued using a setTimeout
@@ -742,7 +765,9 @@ SWFUpload.prototype.executeNextEvent = function () {
 
 	var  f = this.eventQueue ? this.eventQueue.shift() : null;
 	if (typeof(f) === "function") {
+        console.log('%% executeNextEvent.apply Start '+f)
 		f.apply(this);
+        console.log('%% executeNextEvent.apply Completed')
 	}
 };
 
@@ -788,7 +813,7 @@ SWFUpload.prototype.flashReady = function () {
 	var movieElement = this.getMovieElement();
 
 	if (!movieElement) {
-		this.debug("Flash called back ready but the flash movie can't be found.");
+		console.log("Flash called back ready but the flash movie can't be found.");
 		return;
 	}
 
@@ -801,37 +826,42 @@ SWFUpload.prototype.flashReady = function () {
 // This function is called by Flash each time the ExternalInterface functions are created.
 SWFUpload.prototype.cleanUp = function (movieElement) {
 	// Pro-actively unhook all the Flash functions
+    console.log('%% cleanUp Start')
 	try {
 		if (this.movieElement && typeof(movieElement.CallFunction) === "unknown") { // We only want to do this in IE
-			this.debug("Removing Flash functions hooks (this should only run in IE and should prevent memory leaks)");
+			console.log("Removing Flash functions hooks (this should only run in IE and should prevent memory leaks)");
 			for (var key in movieElement) {
 				try {
-          // Coupa - see : https://groups.google.com/forum/?fromgroups=#!topic/swfupload/57ySk2JoLbE
+                    // Coupa - see : https://groups.google.com/forum/?fromgroups=#!topic/swfupload/57ySk2JoLbE
 					// if (typeof(movieElement[key]) === "function") { 
 					if (typeof(movieElement[key]) === "function"&& key[0] <= 'Z') // Remove only Flash functions (starts with capital letters) 
-          {
+                    {
 						movieElement[key] = null;
 					}
 				} catch (ex) {
+                    console.log("!!!!!!!!!!!!!!!!! cleanUp exception 1");
 				}
 			}
 		}
 	} catch (ex1) {
-	
+        console.log("!!!!!!!!!!!!!!!!! cleanUp exception 2");
 	}
 
 	// Fix Flashes own cleanup code so if the SWFMovie was removed from the page
 	// it doesn't display errors.
+    console.log("__flash__removeCallback set to function ");
 	window["__flash__removeCallback"] = function (instance, name) {
 		try {
 			if (instance) {
 				instance[name] = null;
+                console.log("__flash__removeCallback called for instance "+name);
 			}
 		} catch (flashEx) {
-		
+            console.log("!!!!!!!!!!!!!!!!! __flash__removeCallback exception 1");
 		}
 	};
 
+    console.log('%% cleanUp Completed')
 };
 
 
@@ -913,11 +943,9 @@ SWFUpload.prototype.debug = function (message) {
 	this.queueEvent("debug_handler", message);
 };
 
-// kusno - additional code to cleanup testExternalInterface timer in swfupload.swf
 SWFUpload.prototype.swfDestroy = function () {
     this.callFlash("Destroy");
 };
-
 
 /* **********************************
 	Debug Console
